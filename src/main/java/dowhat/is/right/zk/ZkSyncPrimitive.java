@@ -12,6 +12,8 @@ import org.apache.zookeeper.Watcher.Event.KeeperState;
 import org.apache.zookeeper.ZooKeeper;
 
 /**
+ * {@link ZkSessionManager}
+ *
  * <English>
  * Zookeeper synchronize primitive implements the watcher interface.
  *
@@ -625,6 +627,7 @@ public abstract class ZkSyncPrimitive implements Watcher {
   /**
    * <English>
    * Delay a time to retry.
+   *
    * <Chinese>
    * 延迟一定时间后重试。
    *

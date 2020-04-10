@@ -1,8 +1,15 @@
 package dowhat.is.right.zk;
 
+import lombok.Getter;
 import org.apache.zookeeper.KeeperException;
 
 /**
+ * <English>
+ * Define zookeeper exception.
+ *
+ * <Chinese>
+ * 定义zookeeper的异常。
+ *
  * @author 杨春炼
  * @since 2020-04-03
  */
@@ -43,8 +50,9 @@ public class ZkException extends Exception {
     UNKNOWN_ERROR("未知错误"),
     //
     ;
-    //Chinese des.
-    private String des;
+
+    @Getter
+    private String des;//Chinese des.
 
     Error(String des) {
       this.des = des;

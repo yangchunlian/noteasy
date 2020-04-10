@@ -18,13 +18,17 @@ import org.apache.zookeeper.Watcher.Event.KeeperState;
 import org.apache.zookeeper.ZooKeeper;
 
 /**
+ * {@link ZkSyncPrimitive}
+ *
  * <English>
  * A watcher object which will be notified of state changes,
  * <p>
  * may also be notified for node events.
  *
  * <Chinese>
- * zk会话管理
+ * zk会话管理。
+ * <p>
+ * 当事件状态变化或者节点事件时，会通知。
  *
  * @author 杨春炼
  * @since 2020-04-03
@@ -122,6 +126,14 @@ public final class ZkSessionManager implements Watcher {
     instance = new ZkSessionManager(connectString, sessionTimeout, maxConnectAttempts);
   }
 
+  /**
+   * <English>
+   * Before destroy, you should shut down.
+   * <Chinese>
+   * 在杀掉项目前，关闭zk客户端连接和回调线程池。
+   *
+   * @throws InterruptedException exception
+   */
   public void shutdown() throws InterruptedException {
     shutdown = true;
     zkClient.close();
@@ -135,8 +147,9 @@ public final class ZkSessionManager implements Watcher {
   /**
    * <English>
    * retry the primitive runnable.
+   *
    * <Chinese>
-   * 重试逻辑
+   * 重试逻辑。
    *
    * @param operation runnable 需要重试的任务
    * @param retries   retry time 重试次数
@@ -154,26 +167,27 @@ public final class ZkSessionManager implements Watcher {
   /**
    * <English>
    * Restart a primitive when connected.
+   *
    * <Chinese>
-   * zk客户端连接时，重启原语
+   * zk客户端连接时，重启原语。
    *
    * @param primitive 原语
    */
   void restartPrimitiveWhenConnected(ZkSyncPrimitive primitive) {
     synchronized (retryMutex) {
       if (currRestartOnConnectList == null) {
-        currRestartOnConnectList = Collections
-            .newSetFromMap(new WeakHashMap<>());
-        currRestartOnConnectList.add(primitive);
+        currRestartOnConnectList = Collections.newSetFromMap(new WeakHashMap<>());
       }
+      currRestartOnConnectList.add(primitive);
     }
   }
 
   /**
    * <English>
    * Resurrect primitive when new session.
+   *
    * <Chinese>
-   * 开启新会话时，复活单个原语
+   * 开启新会话时，复活单个原语。
    *
    * @param primitive 原语
    */
@@ -209,12 +223,20 @@ public final class ZkSessionManager implements Watcher {
 
   /**
    * <English>
-   * The ZooKeeper client is connected to the ZooKeeper cluster. Actions that modify cluster data
-   * may now be performed, Any primitives that were previously suspended after disconnection must be
-   * restarted, and any primitives that wished to be resurrected after session expiry, must be asked
-   * to resynchronize.
+   * The ZooKeeper client is connected to the ZooKeeper cluster.
+   * <p>
+   * Actions that modify cluster data may now be performed,
+   * <p>
+   * Any primitives that were previously suspended after disconnection must be restarted,
+   * <p>
+   * and any primitives that wished to be resurrected after session expiry,
+   * <p>
+   * must be asked to resynchronize.
+   *
    * <Chinese>
-   * ZooKeeper客户端连接到ZooKeeper集群。可以执行修改集群数据的操作，
+   * ZooKeeper客户端连接到ZooKeeper集群。
+   * <p>
+   * 可以执行修改集群数据的操作，
    * <p>
    * 必须重新启动以前在断开连接后挂起的所有原语，
    * <p>
@@ -255,11 +277,20 @@ public final class ZkSessionManager implements Watcher {
 
   /**
    * <English>
-   * We have been disconnected from ZooKeeper. The client will try to reconnect automatically.
-   * However, even after a successful reconnect, we may miss node creation followed by node deletion
-   * event. Furthermore, we cannot be *sure* of situation on server while in this state, nor perform
-   * actions that require modifying the server state. This may require special handling so we notify
-   * our sync objects.
+   * We have been disconnected from ZooKeeper.
+   * <p>
+   * The client will try to reconnect automatically.
+   * <p>
+   * However, even after a successful reconnect,
+   * <p>
+   * we may miss node creation followed by node deletion event.
+   * <p>
+   * Furthermore, we cannot be *sure* of situation on server while in this state,
+   * <p>
+   * nor perform actions that require modifying the server state.
+   * <p>
+   * This may require special handling so we notify our sync objects.
+   *
    * <Chinese>
    * 和zk断开连接。
    * <p>
@@ -277,9 +308,14 @@ public final class ZkSessionManager implements Watcher {
 
   /**
    * <English>
-   * The ZooKeeper session has expired. We need to initiate the creation of a new client session.
+   * The ZooKeeper session has expired.
+   * <p>
+   * We need to initiate the creation of a new client session.
+   * <p>
    * Primitives that are currently suspended while waiting for re-connection must now be killed,
+   * <p>
    * except for the rare case where they can be resurrected when there is a new session.
+   *
    * <Chinese>
    * zk会话已经过期。
    * <p>
@@ -293,6 +329,7 @@ public final class ZkSessionManager implements Watcher {
        * <English>
        * Primitives waiting for reconnection before continuing their operations must now die, except for the
        * rare case they wish to be resurrected when there is a new session
+       *
        * <Chinese>
        * 在继续操作之前等待重新连接的原语现在必须死亡，除非在有新会话是，它们才有可能被复活。
        */

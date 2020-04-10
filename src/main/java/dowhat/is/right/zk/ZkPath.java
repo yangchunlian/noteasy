@@ -9,24 +9,33 @@ import org.apache.zookeeper.common.PathUtils;
 
 /**
  * <English>
- * Create a path on ZooKeeper. First an attempt is made to create the target path directly. If this
- * fails because its immediate ancestor node does not exist, an attempt is made to create the
- * ancestor. This continues until an ancestor node is successfully created. Thereafter, successive
- * descendants are created until the target path is created. This algorithm improves performance in
- * most cases by minimizing round-trips to check the for the existence of ancestors of the target
- * path when the target or a close ancestor already exists.
+ * Create a path on ZooKeeper.
+ * <p>
+ * First an attempt is made to create the target path directly.
+ * <p>
+ * If this fails because its immediate ancestor node does not exist,
+ * <p>
+ * an attempt is made to create the ancestor.
+ * <p>
+ * This continues until an ancestor node is successfully created.
+ * <p>
+ * Thereafter, successive descendants are created until the target path is created.
+ * <p>
+ * This algorithm improves performance in most cases by minimizing round-trips to check the for the
+ * existence of ancestors of the target path when the target or a close ancestor already exists.
+ *
  * <Chinese>
- * 在ZooKeeper上创建一个路径。
+ * ZooKeeper创建路径。
  * <p>
  * 首先尝试直接创建目标路径。
  * <p>
- * 如果因为它的直接祖先节点不存在而失败，则尝试创建祖先。
+ * 如果因为它的父节点不存在而失败，则尝试创建父节点。
  * <p>
- * 这将一直进行下去，直到成功创建了一个祖先节点。
+ * 这将一直进行下去，直到创建成功第一个根节点。
  * <p>
- * 然后，创建后续的后代，直到创建目标路径为止。
+ * 然后，逆向创建后代，直到创建成功目标路径。
  * <p>
- * 在大多数情况下，此算法通过最小化往返来改进性能，以在目标或其近亲已经存在时检查目标路径的祖先是否存在。
+ * 这个算法在目标节点或者目标节点的父节点已存在的情况下，会大大提升性能。
  *
  * @author 杨春炼
  * @since 2020-04-03

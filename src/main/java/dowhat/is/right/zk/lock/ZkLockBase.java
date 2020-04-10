@@ -20,6 +20,7 @@ import org.apache.zookeeper.data.Stat;
 /**
  * <English>
  * Base class for single path read and write locks.
+ *
  * <Chinese>
  * 用于单路径读写锁的基类。
  *
@@ -333,9 +334,10 @@ public abstract class ZkLockBase extends ZkSyncPrimitive implements
 
   /**
    * <English>
-   * Set the lock state
+   * Set the lock state.
+   *
    * <Chinese>
-   * 设置锁的状态
+   * 设置锁的状态。
    *
    * @param newState The new lock state
    * @throws ZkException zk exception

@@ -2,10 +2,10 @@ package dowhat.is.right.zk.lock;
 
 /**
  * <English>
- * zookeeper write lock
+ * Zookeeper write lock.
  *
  * <Chinese>
- * zk写锁
+ * zk写锁。
  *
  * @author 杨春炼
  * @since 2020-04-03

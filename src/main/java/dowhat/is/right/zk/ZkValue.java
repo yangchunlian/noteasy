@@ -6,9 +6,7 @@ package dowhat.is.right.zk;
  */
 public class ZkValue extends ZkSyncPrimitive {
 
-
   ZkValue() throws InterruptedException {
     super(ZkSessionManager.instance());
   }
-
 }

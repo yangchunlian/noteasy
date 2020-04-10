@@ -23,8 +23,9 @@ public class ZkLockNode implements Comparable<ZkLockNode> {
   }
 
   /**
-   * Retries the lock node id from a full lock node name path (the path after addition of sequence
-   * number).
+   * Retries the lock node id from a full lock node name path
+   * <p>
+   * (the path after addition of sequence number).
    *
    * @param localNodeName The name path to retrieve the id from
    * @return The lock node id

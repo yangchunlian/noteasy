@@ -1,5 +1,3 @@
-# noteasy
+# not easy
 
-## Individual Learning
-
-## 纯自我学习项目
+自我提升之路：手敲大佬代码

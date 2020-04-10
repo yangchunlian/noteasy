@@ -8,9 +8,10 @@ public interface ISinglePathLock extends ILock, Comparable<ISinglePathLock> {
 
   /**
    * <English>
-   * Get the path that a lock is operating against
+   * Get the path that a lock is operating against.
+   *
    * <Chinese>
-   * 获取单个锁操作的路径
+   * 获取单个锁操作的路径。
    *
    * @return The path the lock is attempting to lock./准备加锁的路径
    */

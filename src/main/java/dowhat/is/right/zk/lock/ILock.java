@@ -31,6 +31,7 @@ public interface ILock {
   /**
    * <English>
    * Asynchronously try to acquire the lock. The listener object receives the result.
+   *
    * <Chinese>
    * 异步获取锁，监听器的上下文接收结果
    *
