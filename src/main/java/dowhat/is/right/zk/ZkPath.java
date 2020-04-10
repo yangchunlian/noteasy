@@ -33,7 +33,6 @@ import org.apache.zookeeper.common.PathUtils;
  */
 public class ZkPath extends ZkSyncPrimitive {
 
-
   private final String targetPath;
   private final String[] pathNodes;
   private final CreateMode createMode;
@@ -41,6 +40,7 @@ public class ZkPath extends ZkSyncPrimitive {
   /*
    * <English>
    * If create failed, they traverse create the parent path.
+   *
    * <Chinese>
    * 如果创建失败，遍历的创建父路径，然后沿着父路径遍历创建子路径
    */

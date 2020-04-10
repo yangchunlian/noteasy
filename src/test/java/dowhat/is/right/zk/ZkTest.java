@@ -33,7 +33,7 @@ public class ZkTest {
   }
 
   @Test
-  public void testLimit() throws ZkException, InterruptedException {
+  public void testLimit() {
     ZkReadLock zkReadLock = new ZkReadLock("/2020-04-07/1opsIn60s");
     try {
       boolean b = zkReadLock.tryAcquire();

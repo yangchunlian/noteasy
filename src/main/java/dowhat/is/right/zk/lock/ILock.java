@@ -1,6 +1,7 @@
 package dowhat.is.right.zk.lock;
 
 import dowhat.is.right.zk.ZkException;
+import lombok.Getter;
 
 /**
  * <English>
@@ -42,13 +43,19 @@ public interface ILock {
 
   /**
    * <English>
-   * Try to acquire the lock in a synchronous manner, but return without waiting if the lock is
-   * already held by another instance. Note this method is not asynchronous because blocking network
-   * IO can be performed to determine whether a lock is already held by another instance.
-   * <Chinese>
-   * 尝试同步获取锁，但是如果锁已被持有，不会继续等待。
+   * Try to acquire the lock in a synchronous manner,
    * <p>
-   * 注意这不是异步方法，因为同步网络io下，能够判断锁是否已经被持有。
+   * but return without waiting if the lock is already held by another instance.
+   * <p>
+   * Note this method is not asynchronous because blocking network IO can be performed to determine
+   * whether a lock is already held by another instance.
+   *
+   * <Chinese>
+   * 同步获取锁，
+   * <p>
+   * 如果锁已被其他zk客户端持有，不会继续等待。
+   * <p>
+   * 注意不是异步方法，因为同步网络io下，能够判断锁是否已经被持有。
    *
    * @return Whether the lock has been acquired.//判断锁是否被持有
    * @throws ZkException          zk exception
@@ -58,36 +65,54 @@ public interface ILock {
 
   /**
    * <English>
-   * Try to acquire the lock in an asynchronous manner. If the lock is already held, the operation
-   * gives up without waiting, This method does not wait for any blocking IO and the result is
-   * returned through the provided listener interface.
-   * <Chinese>
-   * 争取异步获取锁。如果锁已被持有就不再等待。
+   * Try to acquire the lock in an asynchronous manner.
    * <p>
-   * 这个方法不等待网络io情况。结果通过监听器返回。
+   * If the lock is already held, the operation gives up without waiting,
+   * <p>
+   * This method does not wait for any blocking IO and the result is returned through the provided
+   * listener interface.
    *
-   * @param listener 监听器 The listener object to be notified of the result.
+   * <Chinese>
+   * 异步获取锁。
+   * <p>
+   * 如果锁已被持有直接放弃。
+   * <p>
+   * 此方法不阻塞，通过监听器直接返回结果。
+   *
+   * @param listener The listener object to be notified of the result./监听器
    * @param context  上下文
    */
   void tryAcquire(ITryLockListener listener, Object context)
       throws ZkException, InterruptedException;
 
   /**
+   * <English>
    * Release the lock.
+   *
+   * <Chinese>
+   * 释放锁。
    */
   void release();
 
   /**
+   * <English>
    * Determines the state of the lock.
    *
-   * @return The lock state.
+   * <Chinese>
+   * 获取锁的状态。
+   *
+   * @return The lock state./锁的类型
    */
   LockState getState();
 
   /**
+   * <English>
    * Determines the type of the lock.
    *
-   * @return The lock type.
+   * <Chinese>
+   * 获取所得类型。
+   *
+   * @return The lock type./锁的类型
    */
   LockType getType();
 
@@ -102,6 +127,7 @@ public interface ILock {
     RELEASED("已释放"),
     ERROR("错误"),
     ;
+    @Getter
     private String des;
 
     LockState(String des) {
@@ -113,12 +139,12 @@ public interface ILock {
    * 锁的类型
    */
   enum LockType {
-    READ("读"),
-    WRITE("写"),
+    READ("读锁"),
+    WRITE("写锁"),
     MULTI("批量"),
-    NONE("nil"),
+    NONE("无锁"),
     ;
-
+    @Getter
     private String des;
 
     LockType(String des) {

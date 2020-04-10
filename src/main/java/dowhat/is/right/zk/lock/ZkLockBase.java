@@ -290,7 +290,16 @@ public abstract class ZkLockBase extends ZkSyncPrimitive implements
     return result == 0 ? (getType() == other.getType() ? 1 : 0) : result;
   }
 
-  private void createRootPath(String path) throws InterruptedException {
+  /**
+   * <English>
+   * create root path
+   *
+   * <Chinese>
+   * 创建根路径（只创建路径）
+   *
+   * @param path 路径
+   */
+  private void createRootPath(String path) {
     zkPath = new ZkPath(path, CreateMode.PERSISTENT);
     // TODO for now only persistent ZK nodes can have children. fix this.
     zkPath.addUpdateListener(createLockNode, true);

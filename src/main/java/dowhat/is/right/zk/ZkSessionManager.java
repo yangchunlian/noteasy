@@ -18,10 +18,12 @@ import org.apache.zookeeper.Watcher.Event.KeeperState;
 import org.apache.zookeeper.ZooKeeper;
 
 /**
- * a watcher object which will be notified of state changes,
+ * <English>
+ * A watcher object which will be notified of state changes,
  * <p>
- * may also be notified for node events
- * <p>
+ * may also be notified for node events.
+ *
+ * <Chinese>
  * zk会话管理
  *
  * @author 杨春炼
@@ -42,20 +44,20 @@ public final class ZkSessionManager implements Watcher {
   private final Integer retryMutex = -1;
   //超时时间
   private final int sessionTimeout;
+  //zk客户端
   volatile ZooKeeper zkClient;
+  //是否关闭
   private volatile boolean shutdown;
   //当前复活原语列表
   private Set<ZkSyncPrimitive> currResurrectList;
   //重启后需要重启的原语列表
   private Set<ZkSyncPrimitive> currRestartOnConnectList;
-  //最大连接次数
+  //最大连接重试次数
   private int maxConnectAttempts;
-  //异常
-  private IOException exception;
   /**
-   * 创建一个zk client 线程
+   * 创建一个[zk client]线程
    */
-  private Callable<ZooKeeper> clientCreator = new Callable<ZooKeeper>() {
+  private Callable<ZooKeeper> zkClientCreator = new Callable<ZooKeeper>() {
     @Override
     public ZooKeeper call() throws Exception {
       int attempts = 0;
@@ -96,11 +98,10 @@ public final class ZkSessionManager implements Watcher {
     isConnected = new ManualResetEvent(false);
     //一般机器为8核心
     callBackExecutor = Executors.newScheduledThreadPool(8);
-    exception = null;
     //zk只有一个主线程，回调采用回调线程
     connectExecutor = Executors.newSingleThreadExecutor();
     try {
-      connectExecutor.submit(clientCreator)
+      connectExecutor.submit(zkClientCreator)
           .get();//we know zookeeper client assigned when past this statement
       isConnected.waitOne();
     } catch (Exception e) {
@@ -310,6 +311,6 @@ public final class ZkSessionManager implements Watcher {
     //会话关闭
     isConnected.reset();
     //尝试创建新的会话
-    connectExecutor.submit(clientCreator);
+    connectExecutor.submit(zkClientCreator);
   }
 }

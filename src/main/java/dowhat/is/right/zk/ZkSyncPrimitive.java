@@ -12,7 +12,11 @@ import org.apache.zookeeper.Watcher.Event.KeeperState;
 import org.apache.zookeeper.ZooKeeper;
 
 /**
- * zk 的同步原语，实现zk的watcher接口
+ * <English>
+ * Zookeeper synchronize primitive implements the watcher interface.
+ *
+ * <Chinese>
+ * zk同步原语，实现zk的watcher接口。
  *
  * @author 杨春炼
  * @since 2020-04-03
@@ -22,64 +26,79 @@ public abstract class ZkSyncPrimitive implements Watcher {
   /**
    * <English>
    * Mutex for use synchronizing access to private members.
+   *
    * <Chinese>
-   * 互斥锁：用于同步访问私有字段（成员）
+   * 互斥锁：用于同步访问私有字段（成员）。
    */
   private final Integer mutex;
   /**
    * <English>
    * The zookeeper session handle.
+   *
    * <Chinese>
-   * zk client
+   * zk客户端。
    */
   ZooKeeper zkClient;
   /**
    * <English>
    * Interrupted task in asynchronous operation sequence, which needs to be re-run on connect.
+   *
    * <Chinese>
-   * 被打断的异步操作任务，连接zk服务后，需要重新启动
+   * 被打断的异步操作任务，连接zk服务后，需要重新启动。
    */
   Runnable retryOnConnect;
   /**
    * <English>
-   * The manager of the zookeeper session with operate within
+   * The manager of the zookeeper session with operate within.
+   *
    * <Chinese>
-   * zk会话管理
+   * zk会话管理。
    */
   private ZkSessionManager session;
   /**
    * <English>
-   * Tasks to be run when the logical state of the primitive changes e.g. a lock acquired, a list
-   * get new items.
+   * Tasks to be run when the logical state of
+   * <p>
+   * the primitive changes e.g. a lock acquired, a list get new items.
+   *
    * <Chinese>
-   * 当原语的逻辑状态改变时，需要启动的任务。比如获得锁，列表获得新的条例。
+   * 当原语的逻辑状态改变时（比如得到锁，获得新的消息），需要启动的任务列表。
    */
   private List<Runnable> stateUpdateListeners;
   /**
-   * <English>Tasks to be run when the primitive enters into an unsynchronized state i.e. on
-   * session expiry.
-   * <Chinese>当原语进入非同步状态(即在会话到期时)时要运行的任务
+   * <English>
+   * Tasks to be run when the primitive enters into an unsynchronized state
+   * <p>
+   * i.e. on session expiry.
+   *
+   * <Chinese>
+   * 当原语进入非同步状态（比如会话过期时）时要运行的任务。
    */
   private List<Runnable> dieListeners;
   /**
    * <English>
-   * Event that indicates that our state is synchronized and "ready" and client can proceed.
+   * Event that indicates that our state is synchronized
+   * <p>
+   * and "ready" and client can proceed.
+   *
    * <Chinese>
-   * 显示事件状态是否准备好让客户端处理
+   * 显示事件状态是否准备好让客户端处理。
    */
   private ManualResetEvent isSynchronized;
   /**
    * <English>
    * Exception indicates what killed this synchronization primitive.
+   *
    * <Chinese>
-   * 杀死同步原语的异常类型
+   * 杀死同步原语的异常类型。
    */
   private volatile ZkException killedByException;
   /**
    * <English>
    * Number of attempts retrying a task interrupted by some error e.g. timeout
+   *
    * <Chinese>
-   * 异常造成的重试次数
+   * 异常（比如超时）造成的重试次数。
    */
   private int reties;
 
@@ -96,37 +115,46 @@ public abstract class ZkSyncPrimitive implements Watcher {
 
   /**
    * <English>
-   * Wait until the primitive has reached a synchronized state. If the operation was successful,
-   * this is triggered when a derived class calls <Code>onStateChanged()</Code> for the first time.
+   * Wait until the primitive has reached a synchronized state.
+   * <p>
+   * If the operation was successful, this is triggered when a derived class calls
+   * <Code>onStateChanged()</Code> for the first time.
+   * <p>
    * If the operation was unsuccessful, an exception is thrown.
-   * <Chinese>
-   * 等待原语到达同步状态。当调用 onStateChanged() 方法时，会触发这个操作。如果不成功，会抛出异常。
    *
-   * @throws ZkException          zk exception
-   * @throws InterruptedException zk interrupted exception
+   * <Chinese>
+   * 等待原语到达同步状态。
+   * <p>
+   * 当第一次调用 onStateChanged() 方法时，会触发这个操作。
+   * <p>
+   * 如果不成功，会抛出异常。
+   *
+   * @throws ZkException zk exception
    */
-  public void waitSynchronized() throws ZkException, InterruptedException {
+  public void waitSynchronized() throws ZkException {
     isSynchronized.waitOne();
-    if (getKillerException() == null) {
-      return;
+    if (getKillerException() != null) {
+      throw getKillerException();
     }
-    throw getKillerException();
   }
 
   /**
    * <English>
    * Add a listener task to be executed when the object enters the synchronized state,
    * <p>
-   * and every time it updates its state thereafter
-   * <p>
-   * (as marked by derived classes calling<code>onStateUpdated()</code>).
-   * <Chinese>
-   * 添加一个监听：事件进入同步状态触发。并在以后每次状态更新时执行。
+   * and every time it updates its state thereafter (as marked by derived classes
+   * calling<code>onStateUpdated()</code>).
    *
-   * @param handler      The listener task to execute when the state has changed. A weak reference
-   *                     is taken.
+   * <Chinese>
+   * 添加一个监听：事件进入同步状态触发。
+   * <p>
+   * 并在以后每次状态更新时执行。
+   *
+   * @param handler      The listener task to execute when the state has changed.
+   *                     <p>
+   *                     A weak reference is taken.
    * @param doStartupRun If the state of the primitive is already synchronized then run the handler
-   *                     immediately
+   *                     immediately。
    */
   public void addUpdateListener(Runnable handler, boolean doStartupRun) {
     synchronized (mutex) {
@@ -141,10 +169,28 @@ public abstract class ZkSyncPrimitive implements Watcher {
     }
   }
 
+  /**
+   * <English>
+   * Remove a task from update listener list.
+   *
+   * <Chinese>
+   * 从更新的任务监听列表中，删除一个。
+   *
+   * @param handler task
+   */
   public void removeUpdateListener(Runnable handler) {
     stateUpdateListeners.remove(handler);
   }
 
+  /**
+   * <English>
+   * Add a task to die listener list.
+   *
+   * <Chinese>
+   * 往销毁的任务监听列表中，添加一个。
+   *
+   * @param handler task
+   */
   public void addDieListener(Runnable handler) {
     synchronized (mutex) {
       if (dieListeners == null) {
@@ -160,7 +206,11 @@ public abstract class ZkSyncPrimitive implements Watcher {
   }
 
   /**
+   * <English>
    * Return whether the synchronization primitive is still valid / alive.
+   *
+   * <Chinese>
+   * 判断同步原语是否存活。
    *
    * @return whether this primitive is alive and can be used.
    */
@@ -171,8 +221,9 @@ public abstract class ZkSyncPrimitive implements Watcher {
   /**
    * <English>
    * If the primitive has been killed, returns the exception that has killed it.
+   *
    * <Chinese>
-   * 如果原语已死，返回杀死它的异常
+   * 如果原语已死，返回该异常。
    *
    * @return The exception that killed the primitive.
    */
@@ -183,6 +234,7 @@ public abstract class ZkSyncPrimitive implements Watcher {
   /**
    * <English>
    * Must be called by derived classes when they have successfully updated their state.
+   *
    * <Chinese>
    * 当派生类成功更新其状态时，它们必须调用。
    */
@@ -204,12 +256,22 @@ public abstract class ZkSyncPrimitive implements Watcher {
   /**
    * <English>
    * If you have indicated that you wish to resurrect your synchronization primitive after a session
-   * expiry or other event that would otherwise kill it - for example by return <code>true</code>
-   * from
-   * <code>shouldResurrectOnSessionExpiry</code> - you need to override this method to perform
-   * the re-synchronization steps. You might choose to ressurrect/re-synchronize for example in a
-   * case where your primitive maintains a listing of nodes in a cluster, and you would rather
-   * maintain the last good known
+   * expiry or other event that would otherwise kill it
+   * <p>
+   * - for example by returning <code>true</code> from <code>shouldResurrectOnSessionExpiry()</code>
+   * - you need to override this method to perform the re-synchronization steps.
+   * <p>
+   * You might choose to ressurect/re-synchronize for example in a case where your primitive
+   * maintains a listing of nodes in a cluster,
+   * <p>
+   * and you would rather maintain the last good known record and try to re-synchronize rather than
+   * blow up in the case where for some reason a session is expired
+   * <p>
+   * - for example after ZooKeeper has temporarily gone down or been partitioned.
+   * <p>
+   * The ZooKeeper documentation warns against libraries that attempt to re-synchronize,
+   * <p>
+   * but it seems there are some cases where it is valid to do so.
    *
    * <Chinese>
    * 用这个方法在会话过期后，复活你的同步原语，否则就要杀掉。
@@ -218,7 +280,15 @@ public abstract class ZkSyncPrimitive implements Watcher {
    * <p>
    * 你需要重写这个方法来执行重新同步的步骤。
    * <p>
-   * 你可以选择复活/重新同步，例如你的原语在集群中包含一系列节点。
+   * 你可以在你的集群原语列表中，选择一些进行复活/重新同步，
+   * <p>
+   * 而且最好保留一个良好的记录，并且重新同步，而不是因为会话过期等这种原因直接崩溃。
+   * <p>
+   * 比如在zk暂时下线或被分割。
+   * <p>
+   * zk的文档中，警告要慎重使用重新同步。
+   * <p>
+   * 但在有些时候，这么做是有作用的。
    */
   protected void resynchronize() {
   }
@@ -226,6 +296,7 @@ public abstract class ZkSyncPrimitive implements Watcher {
   /**
    * <English>
    * Override to be notified of death event.
+   *
    * <Chinese>
    * 重写方法，用来接收死亡事件的通知。
    *
@@ -237,6 +308,7 @@ public abstract class ZkSyncPrimitive implements Watcher {
   /**
    * <English>
    * Override to be notified of connection event.
+   *
    * <Chinese>
    * 重写方法， 用来接收连接成功通知。
    */
@@ -246,6 +318,7 @@ public abstract class ZkSyncPrimitive implements Watcher {
   /**
    * <English>
    * Override to be notified of disconnection event.
+   *
    * <Chinese>
    * 重写方法，用来接收失去连接的通知。
    */
@@ -255,6 +328,7 @@ public abstract class ZkSyncPrimitive implements Watcher {
   /**
    * <English>
    * Override to be notified of session expiry event.
+   *
    * <Chinese>
    * 重写方法，用来接受会话过期的通知。
    */
@@ -264,6 +338,7 @@ public abstract class ZkSyncPrimitive implements Watcher {
   /**
    * <English>
    * Override to be notified of node creation event.
+   *
    * <Chinese>
    * 重写方法，用来接收节点创建的通知。
    *
@@ -276,6 +351,7 @@ public abstract class ZkSyncPrimitive implements Watcher {
   /**
    * <English>
    * Override to be notified of node deletion event.
+   *
    * <Chinese>
    * 重写方法，用来接收节点删除的通知。
    *
@@ -288,6 +364,7 @@ public abstract class ZkSyncPrimitive implements Watcher {
   /**
    * <English>
    * Override to be notified of node data changing event.
+   *
    * <Chinese>
    * 重写方法，用来接收节点数据变化的事件。
    *
@@ -300,6 +377,7 @@ public abstract class ZkSyncPrimitive implements Watcher {
   /**
    * <English>
    * Override to be notified of node children list changed event.
+   *
    * <Chinese>
    * 重写方法，用来接收孩子节点列表的变化事件。
    *
@@ -312,6 +390,7 @@ public abstract class ZkSyncPrimitive implements Watcher {
   /**
    * <English>
    * Override to indicate whether operations should be retried on error.
+   *
    * <Chinese>
    * 重写方法，用来表名操作是否需要重试。
    *
@@ -324,6 +403,7 @@ public abstract class ZkSyncPrimitive implements Watcher {
   /**
    * <English>
    * Override to indicate whether operations should be retried on timeout error.
+   *
    * <Chinese>
    * 重写方法，表明超时后，是否重试
    *
@@ -336,8 +416,11 @@ public abstract class ZkSyncPrimitive implements Watcher {
   /**
    * <English>
    * Override to indicate whether to resurrect the primitive and re-synchronize after session
-   * expiry. See the comments for <code>resynchronize()</code> for discussions of rare cases where
-   * this is desirable. Only do this with extreme caution.
+   * expiry.
+   * <p>
+   * See the comments for <code>resynchronize()</code> for discussions of rare cases where this is
+   * desirable. Only do this with extreme caution.
+   *
    * <Chinese>
    * 表明恢复会话后，是否恢复原语并重新同步。
    * <p>
@@ -351,6 +434,15 @@ public abstract class ZkSyncPrimitive implements Watcher {
     return false;
   }
 
+  /**
+   * <English>
+   * Return a zkClient.
+   *
+   * <Chinese>
+   * 返回zk客户端。
+   *
+   * @return zk client
+   */
   protected ZooKeeper zkClient() {
     return zkClient;
   }
@@ -358,9 +450,14 @@ public abstract class ZkSyncPrimitive implements Watcher {
 
   /**
    * <English>
-   * Permanently kill this synchronization primitive. It cannot be resurrected.
+   * Permanently kill this synchronization primitive.
+   * <p>
+   * It cannot be resurrected.
+   *
    * <Chinese>
-   * 永久终止同步原语。它不能复活。
+   * 永久终止同步原语。
+   * <p>
+   * 它不能复活。
    *
    * @param rc The code of the ZooKeeper error that killed this primitive
    */
@@ -371,15 +468,19 @@ public abstract class ZkSyncPrimitive implements Watcher {
 
   /**
    * <English>
-   * Permanently kill this synchronization primitive. It cannot be resurrected. This method is
-   * typically called by a derived class to pass an exception received from another ZkSyncPrimitive
-   * instance it has been using to implement its algorithm.
+   * Permanently kill this synchronization primitive.
+   * <p>
+   * It cannot be resurrected.
+   * <p>
+   * This method is typically called by a derived class to pass an exception received from another
+   * ZkSyncPrimitive instance it has been using to implement its algorithm.
+   *
    * <Chinese>
-   * 永久终止同步原语。不能复活。
+   * 永久终止同步原语。
    * <p>
-   * 这个方法通常由派生类调用，已传递另一个同步原语接收到的异常。
+   * 不能复活。
    * <p>
-   * 该方法一直用于实现一个算法。
+   * 这个方法通常由派生类调用，接收另一个同步原语算法产生的异常。
    *
    * @param killerException The killer exception.
    */
@@ -387,10 +488,17 @@ public abstract class ZkSyncPrimitive implements Watcher {
     die(new ZkException(killerException));
   }
 
+  /**
+   * <English>
+   * <Chinese>
+   *
+   * @param killerException kill exception
+   */
   protected void die(ZkException killerException) {
     synchronized (mutex) {
-      // Record that we have been killed off by the exception passed by a derived class. This might have been generated
-      // by a contained ZkSyncPrimitive object we were using in the course of an algorithm
+      // Record that we have been killed off by the exception passed by a derived class.
+      // This might have been generated by a contained ZkSyncPrimitive object we were
+      // using in the course of an algorithm
       this.killedByException = killerException;
       // Call into derived event handler
       onDie(killerException);
@@ -407,10 +515,18 @@ public abstract class ZkSyncPrimitive implements Watcher {
 
   /**
    * <English>
-   * Prepares the next step in an asynchronous execution, based upon the return code from the
-   * previous step.
+   * Prepares the next step in an asynchronous execution,
+   * <p>
+   * based upon the return code from the previous step.
+   *
    * <Chinese>
-   * 根据上一步返回的step，异步的执行下一步的step
+   * 根据上一步返回的code，
+   * <p>
+   * 执行下一步的异步操作。
+   * <p>
+   * 如果上一步正常，直接pass。
+   * <p>
+   * 否则根据状态，对应的进行操作。
    *
    * @param rc         The Zookeeper return code from the previous step
    * @param acceptable The acceptable list of return codes from the previous step
@@ -452,6 +568,15 @@ public abstract class ZkSyncPrimitive implements Watcher {
     return false;
   }
 
+  /**
+   * <English>
+   * Trigger operate when receive watch event from zk server.
+   *
+   * <Chinese>
+   * 接收到服务端的事件事，触发操作。
+   *
+   * @param watchedEvent watch event
+   */
   @Override
   public void process(WatchedEvent watchedEvent) {
     String eventPath = watchedEvent.getPath();
@@ -480,6 +605,15 @@ public abstract class ZkSyncPrimitive implements Watcher {
     }
   }
 
+  /**
+   * <English>
+   * Trigger the operate when session expiry.
+   *
+   * <Chinese>
+   * 当会话过期时触发。
+   *
+   * @param dieReason die reason
+   */
   private void onSessionExpiry(Code dieReason) {
     if (shouldResurrectAfterSessionExpiry()) {
       session.resurrectPrimitiveWhenNewSession(this);
@@ -489,7 +623,12 @@ public abstract class ZkSyncPrimitive implements Watcher {
   }
 
   /**
-   * @param operation Runnable
+   * <English>
+   * Delay a time to retry.
+   * <Chinese>
+   * 延迟一定时间后重试。
+   *
+   * @param operation task
    * @param retries   retry times
    */
   private void retryAfterDelay(Runnable operation, int retries) {
