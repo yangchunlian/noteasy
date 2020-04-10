@@ -6,12 +6,13 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * <English>
- * A simple event which can be either signalled or non-signalled. Waiting for a signalled event does
- * not block. Waiting for a non-signalled event blocks until the event becomes signalled or the
- * thread is interrupted. When a thread waits for the event and then returns, it automatically sets
- * the event to a non-signalled state. Therefore, if the event starts in a non-signalled state, the
- * number of waiting threads it has allowed to pass is equal to the number of times it has been
- * signalled via set().
+ * A simple event which can be either signalled or non-signalled.
+ * <p>
+ * Waiting for a signalled event does not block. Waiting for a non-signalled event blocks until the
+ * event becomes signalled or the thread is interrupted. When a thread waits for the event and then
+ * returns, it automatically sets the event to a non-signalled state. Therefore, if the event starts
+ * in a non-signalled state, the number of waiting threads it has allowed to pass is equal to the
+ * number of times it has been signalled via set().
  * <Chinese>
  * 一个可以发出信号或不发出信号的简单事件。
  * <p>
