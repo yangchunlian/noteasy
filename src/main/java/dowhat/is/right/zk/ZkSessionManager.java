@@ -29,8 +29,7 @@ import org.apache.zookeeper.ZooKeeper;
  */
 public final class ZkSessionManager implements Watcher {
 
-  private volatile boolean shutdown;
-  volatile ZooKeeper zkClient;
+  private static ZkSessionManager instance;
   //"host1:port1,host2:port2"
   private final String connectString;
   //整个会话是否启动的标识
@@ -39,18 +38,47 @@ public final class ZkSessionManager implements Watcher {
   private final ExecutorService connectExecutor;
   //线程池
   private final ScheduledExecutorService callBackExecutor;
-  //当前复活原语列表
-  private Set<ZkSyncPrimitive> currResurrectList;
-  //重启后需要重启的原语列表
-  private Set<ZkSyncPrimitive> currRestartOnConnectList;
   //互斥锁
   private final Integer retryMutex = -1;
   //超时时间
   private final int sessionTimeout;
+  volatile ZooKeeper zkClient;
+  private volatile boolean shutdown;
+  //当前复活原语列表
+  private Set<ZkSyncPrimitive> currResurrectList;
+  //重启后需要重启的原语列表
+  private Set<ZkSyncPrimitive> currRestartOnConnectList;
   //最大连接次数
   private int maxConnectAttempts;
   //异常
   private IOException exception;
+  /**
+   * 创建一个zk client 线程
+   */
+  private Callable<ZooKeeper> clientCreator = new Callable<ZooKeeper>() {
+    @Override
+    public ZooKeeper call() throws Exception {
+      int attempts = 0;
+      int retryDelay = 50;
+      while (true) {//return until connected or reach the max connect attempt
+        try {
+          zkClient = new ZooKeeper(connectString, sessionTimeout, ZkSessionManager.this);
+          return zkClient;
+        } catch (IOException e) {
+          e.printStackTrace();
+          attempts++;
+          if (maxConnectAttempts != 0 && attempts >= maxConnectAttempts) {
+            throw (IOException) e.getCause();
+          }
+          retryDelay *= 2;//double the connect time
+          if (retryDelay > 7500) {
+            retryDelay = 7500;
+          }
+        }
+        Thread.sleep(retryDelay);
+      }
+    }
+  };
 
   private ZkSessionManager(String connectString) {
     this(connectString, 6000, 5);
@@ -78,6 +106,19 @@ public final class ZkSessionManager implements Watcher {
     } catch (Exception e) {
       throw new RuntimeException(e);
     }
+  }
+
+  public static ZkSessionManager instance() {
+    return instance;
+  }
+
+  public static void initializeInstance(String connectString) {
+    instance = new ZkSessionManager(connectString);
+  }
+
+  public static void initializeInstance(String connectString, int sessionTimeout,
+      int maxConnectAttempts) {
+    instance = new ZkSessionManager(connectString, sessionTimeout, maxConnectAttempts);
   }
 
   public void shutdown() throws InterruptedException {
@@ -270,47 +311,5 @@ public final class ZkSessionManager implements Watcher {
     isConnected.reset();
     //尝试创建新的会话
     connectExecutor.submit(clientCreator);
-  }
-
-  /**
-   * 创建一个zk client 线程
-   */
-  private Callable<ZooKeeper> clientCreator = new Callable<ZooKeeper>() {
-    @Override
-    public ZooKeeper call() throws Exception {
-      int attempts = 0;
-      int retryDelay = 50;
-      while (true) {//return until connected or reach the max connect attempt
-        try {
-          zkClient = new ZooKeeper(connectString, sessionTimeout, ZkSessionManager.this);
-          return zkClient;
-        } catch (IOException e) {
-          e.printStackTrace();
-          attempts++;
-          if (maxConnectAttempts != 0 && attempts >= maxConnectAttempts) {
-            throw (IOException) e.getCause();
-          }
-          retryDelay *= 2;//double the connect time
-          if (retryDelay > 7500) {
-            retryDelay = 7500;
-          }
-        }
-        Thread.sleep(retryDelay);
-      }
-    }
-  };
-  private static ZkSessionManager instance;
-
-  public static ZkSessionManager instance() {
-    return instance;
-  }
-
-  public static void initializeInstance(String connectString) {
-    instance = new ZkSessionManager(connectString);
-  }
-
-  public static void initializeInstance(String connectString, int sessionTimeout,
-      int maxConnectAttempts) {
-    instance = new ZkSessionManager(connectString, sessionTimeout, maxConnectAttempts);
   }
 }

@@ -23,8 +23,8 @@ import java.util.concurrent.TimeUnit;
  */
 public class ManualResetEvent implements IResetEvent {
 
-  private volatile CountDownLatch event;
   private final Integer mutex;
+  private volatile CountDownLatch event;
 
   public ManualResetEvent(boolean signalled) {
     mutex = -1;

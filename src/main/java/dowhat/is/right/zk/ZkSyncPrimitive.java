@@ -21,12 +21,25 @@ public abstract class ZkSyncPrimitive implements Watcher {
 
   /**
    * <English>
+   * Mutex for use synchronizing access to private members.
+   * <Chinese>
+   * 互斥锁：用于同步访问私有字段（成员）
+   */
+  private final Integer mutex;
+  /**
+   * <English>
    * The zookeeper session handle.
    * <Chinese>
    * zk client
    */
   ZooKeeper zkClient;
-
+  /**
+   * <English>
+   * Interrupted task in asynchronous operation sequence, which needs to be re-run on connect.
+   * <Chinese>
+   * 被打断的异步操作任务，连接zk服务后，需要重新启动
+   */
+  Runnable retryOnConnect;
   /**
    * <English>
    * The manager of the zookeeper session with operate within
@@ -34,7 +47,6 @@ public abstract class ZkSyncPrimitive implements Watcher {
    * zk会话管理
    */
   private ZkSessionManager session;
-
   /**
    * <English>
    * Tasks to be run when the logical state of the primitive changes e.g. a lock acquired, a list
@@ -43,14 +55,12 @@ public abstract class ZkSyncPrimitive implements Watcher {
    * 当原语的逻辑状态改变时，需要启动的任务。比如获得锁，列表获得新的条例。
    */
   private List<Runnable> stateUpdateListeners;
-
   /**
    * <English>Tasks to be run when the primitive enters into an unsynchronized state i.e. on
    * session expiry.
    * <Chinese>当原语进入非同步状态(即在会话到期时)时要运行的任务
    */
   private List<Runnable> dieListeners;
-
   /**
    * <English>
    * Event that indicates that our state is synchronized and "ready" and client can proceed.
@@ -58,7 +68,6 @@ public abstract class ZkSyncPrimitive implements Watcher {
    * 显示事件状态是否准备好让客户端处理
    */
   private ManualResetEvent isSynchronized;
-
   /**
    * <English>
    * Exception indicates what killed this synchronization primitive.
@@ -66,15 +75,6 @@ public abstract class ZkSyncPrimitive implements Watcher {
    * 杀死同步原语的异常类型
    */
   private volatile ZkException killedByException;
-
-  /**
-   * <English>
-   * Interrupted task in asynchronous operation sequence, which needs to be re-run on connect.
-   * <Chinese>
-   * 被打断的异步操作任务，连接zk服务后，需要重新启动
-   */
-  Runnable retryOnConnect;
-
   /**
    * <English>
    * Number of attempts retrying a task interrupted by some error e.g. timeout
@@ -82,15 +82,6 @@ public abstract class ZkSyncPrimitive implements Watcher {
    * 异常造成的重试次数
    */
   private int reties;
-
-
-  /**
-   * <English>
-   * Mutex for use synchronizing access to private members.
-   * <Chinese>
-   * 互斥锁：用于同步访问私有字段（成员）
-   */
-  private final Integer mutex;
 
   protected ZkSyncPrimitive(ZkSessionManager session) {
     this.session = session;
@@ -211,7 +202,6 @@ public abstract class ZkSyncPrimitive implements Watcher {
   }
 
   /**
-   * todo
    * <English>
    * If you have indicated that you wish to resurrect your synchronization primitive after a session
    * expiry or other event that would otherwise kill it - for example by return <code>true</code>

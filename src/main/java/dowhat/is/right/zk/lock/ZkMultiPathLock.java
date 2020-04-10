@@ -8,8 +8,6 @@ import java.util.List;
 import org.apache.commons.lang3.NotImplementedException;
 
 /**
- * todo
- *
  * @author 杨春炼
  * @since 2020-04-05
  */
@@ -18,10 +16,10 @@ public class ZkMultiPathLock implements IMultiPathLock {
   private final int MIN_RETRY_DELAY = 125;
   private final int MAX_RETRY_DELAY = 4000;
   private final int MAX_ACQUIRE_ATTEMPTS = 10;
+  private final Integer mutex;
   private ArrayList<ISinglePathLock> locks;
   private ISinglePathLock[] sortedLocks;
   private volatile LockState lockState;
-  private final Integer mutex;
 
   public ZkMultiPathLock() {
     lockState = LockState.IDLE;

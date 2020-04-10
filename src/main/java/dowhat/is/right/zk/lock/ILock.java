@@ -78,6 +78,20 @@ public interface ILock {
   void release();
 
   /**
+   * Determines the state of the lock.
+   *
+   * @return The lock state.
+   */
+  LockState getState();
+
+  /**
+   * Determines the type of the lock.
+   *
+   * @return The lock type.
+   */
+  LockType getType();
+
+  /**
    * 锁的状态
    */
   enum LockState {
@@ -96,13 +110,6 @@ public interface ILock {
   }
 
   /**
-   * Determines the state of the lock.
-   *
-   * @return The lock state.
-   */
-  LockState getState();
-
-  /**
    * 锁的类型
    */
   enum LockType {
@@ -118,11 +125,4 @@ public interface ILock {
       this.des = des;
     }
   }
-
-  /**
-   * Determines the type of the lock.
-   *
-   * @return The lock type.
-   */
-  LockType getType();
 }

@@ -15,6 +15,7 @@ import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException.Code;
 import org.apache.zookeeper.ZooDefs;
 import org.apache.zookeeper.common.PathUtils;
+import org.apache.zookeeper.data.Stat;
 
 /**
  * <English>
@@ -28,6 +29,8 @@ import org.apache.zookeeper.common.PathUtils;
 public abstract class ZkLockBase extends ZkSyncPrimitive implements
     ISinglePathLock {
 
+  //互斥锁
+  private final Integer mutex;
   //锁路径
   private String lockPath;
   //上下文
@@ -44,8 +47,157 @@ public abstract class ZkLockBase extends ZkSyncPrimitive implements
   private boolean tryAcquireOnly;
   //锁状态
   private volatile LockState lockState;
-  //互斥锁
-  private final Integer mutex;
+  private VoidCallback releaseLockHandler =
+      (rc, path, ctx) -> passOrTryRepeat(rc, new Code[]{Code.OK, Code.NONODE}, (Runnable) ctx);
+  /**
+   * Only delete the node.
+   */
+  private Runnable releaseLock = new Runnable() {
+    @Override
+    public void run() {
+      zkClient().delete(zkPath.getTargetPath() + "/" + thisNodeId, -1, releaseLockHandler, this);
+    }
+  };
+  private Runnable onLockPathError = new Runnable() {
+    @Override
+    public void run() {
+      // Set the lock state
+      safeLockState(LockState.ERROR);
+      // Bubble the killer exception and die!
+      die(zkPath.getKillerException());
+    }
+  };
+  /**
+   * Call back for <code>getQueuedLocks</code>
+   */
+  private ChildrenCallback queuedLocksHandler = new ChildrenCallback() {
+    @Override
+    public void processResult(int rc, String path, Object ctx, List<String> children) {
+      // Upon successful enumeration of lock nodes, see if any are blocking this...
+      // 查看孩子节点，是否有阻塞父节点的情况
+      if (passOrTryRepeat(rc, new Code[]{Code.OK}, (Runnable) ctx)) {
+        // Create sorted list of nodes.
+        SortedSet<ZkLockNode> nodeQueue = new TreeSet<>();
+        for (String lockId : children) {
+          ZkLockNode zkLockNode = ZkLockNode.lockNodeFromId(lockId, ZkLockBase.this.thisNodeId);
+          nodeQueue.add(zkLockNode);
+        }
+        // Check who is blocking this.
+        ZkLockNode self = null;
+        ZkLockNode prevNode = null;
+        ZkLockNode prevWriteNode = null;
+        for (ZkLockNode node : nodeQueue) {
+          if (node.self) {
+            self = node;
+            break;// Break, not continue. Indicate no children.
+          }
+          prevNode = node;
+          if (prevNode.lockType == LockType.WRITE) {
+            prevWriteNode = prevNode;
+          }
+        }
+        // Blocking node
+        ZkLockNode blockingNode;
+        if (self != null && LockType.READ == self.lockType) {
+          blockingNode = prevWriteNode;
+        } else {
+          blockingNode = prevNode;
+        }
+        // Are we blocked?
+        if (blockingNode != null) {
+          blockingNodeId = blockingNode.name;
+          // Should we give up, or wait?
+          if (tryAcquireOnly) {// We abandon attempt to acquire
+            safeLockState(LockState.ABANDONED);
+          } else {// Wait for blocking node.
+            watchBlockingNode.run();
+          }
+        } else {
+          // Children do not have lock, we are acquired!
+          safeLockState(LockState.ACQUIRED);
+        }
+      }
+    }
+  };
+  /**
+   * Get the children locks.
+   */
+  private Runnable getQueuedLocks = new Runnable() {
+    @Override
+    public void run() {
+      zkClient().getChildren(zkPath.getTargetPath(), null, queuedLocksHandler, this);
+    }
+  };
+  private StatCallback blockingNodeHandler = new StatCallback() {
+    @Override
+    public void processResult(int rc, String path, Object ctx, Stat stat) {
+      if (rc == Code.NONODE.intValue()) {
+        getQueuedLocks.run();
+      } else {
+        passOrTryRepeat(rc, new Code[]{Code.OK}, (Runnable) ctx);
+      }
+    }
+  };
+  private Runnable watchBlockingNode = new Runnable() {
+    @Override
+    public void run() {
+      String path = zkPath.getTargetPath() + "/" + blockingNodeId;
+      zkClient().exists(path, ZkLockBase.this, blockingNodeHandler, this);
+    }
+  };
+  /**
+   * Create a call back for <code>createLockNode</code>
+   * <p>
+   * if ok, get the nodeId
+   * <p>
+   * else, ...
+   */
+  private StringCallback createLockNodeHandler = new StringCallback() {
+    @Override
+    public void processResult(int rc, String path, Object ctx, String name) {
+      if (Code.OK.intValue() == rc) {
+        thisNodeId = ZkLockNode.getLockNodeIdFromName(name);
+      }
+      if (passOrTryRepeat(rc, new Code[]{Code.OK}, (Runnable) ctx)) {
+        getQueuedLocks.run();
+      }
+    }
+  };
+  /**
+   * Create lock node in the target path.
+   */
+  private Runnable createLockNode = new Runnable() {
+    @Override
+    public void run() {
+      String path = zkPath.getTargetPath() + "/" + getType() + "-";
+      zkClient().create(
+          path,
+          new byte[0],
+          ZooDefs.Ids.OPEN_ACL_UNSAFE,
+          CreateMode.EPHEMERAL_SEQUENTIAL,
+          createLockNodeHandler,
+          this);
+    }
+  };
+  private Runnable reportStateUpdatedToListener = new Runnable() {
+    @Override
+    public void run() {
+      if (tryAcquireOnly && lockState != LockState.ACQUIRED) {
+        // We know that an error has not occurred, because that is passed to handler below. So report attempt
+        // to acquire locked failed because was already held.
+        ITryLockListener listener = (ITryLockListener) ZkLockBase.this.listener;
+        listener.onTryAcquireLockFailed(ZkLockBase.this, context);
+      } else {
+        listener.onLockAcquired(ZkLockBase.this, context);
+      }
+    }
+  };
+  private Runnable reportDieToListener = new Runnable() {
+    @Override
+    public void run() {
+      listener.onLockError(getKillerException(), ZkLockBase.this, context);
+    }
+  };
 
   public ZkLockBase(String lockPath) {
     super(ZkSessionManager.instance());
@@ -145,172 +297,16 @@ public abstract class ZkLockBase extends ZkSyncPrimitive implements
     zkPath.addDieListener(onLockPathError);
   }
 
-  private Runnable onLockPathError = new Runnable() {
-    @Override
-    public void run() {
-      // Set the lock state
-      safeLockState(LockState.ERROR);
-      // Bubble the killer exception and die!
-      die(zkPath.getKillerException());
-    }
-  };
-
   @Override
   protected void onDie(ZkException killerException) {
     // We just set the lock state. The killer exception has already been set by base class
     safeLockState(LockState.ERROR);
   }
 
-  /**
-   * Create lock node in the target path.
-   */
-  private Runnable createLockNode = new Runnable() {
-    @Override
-    public void run() {
-      String path = zkPath.getTargetPath() + "/" + getType() + "-";
-      zkClient().create(
-          path,
-          new byte[0],
-          ZooDefs.Ids.OPEN_ACL_UNSAFE,
-          CreateMode.EPHEMERAL_SEQUENTIAL,
-          createLockNodeHandler,
-          this);
-    }
-  };
-
-  /**
-   * Create a call back for <code>createLockNode</code>
-   * <p>
-   * if ok, get the nodeId
-   * <p>
-   * else, ...
-   */
-  private StringCallback createLockNodeHandler = new StringCallback() {
-    @Override
-    public void processResult(int rc, String path, Object ctx, String name) {
-      if (Code.OK.intValue() == rc) {
-        thisNodeId = ZkLockNode.getLockNodeIdFromName(name);
-      }
-      if (passOrTryRepeat(rc, new Code[]{Code.OK}, (Runnable) ctx)) {
-        getQueuedLocks.run();
-      }
-    }
-  };
-
-  /**
-   * Get the children locks.
-   */
-  private Runnable getQueuedLocks = new Runnable() {
-    @Override
-    public void run() {
-      zkClient().getChildren(zkPath.getTargetPath(), null, queuedLocksHandler, this);
-    }
-  };
-
-  /**
-   * Call back for <code>getQueuedLocks</code>
-   */
-  private ChildrenCallback queuedLocksHandler = new ChildrenCallback() {
-    @Override
-    public void processResult(int rc, String path, Object ctx, List<String> children) {
-      // Upon successful enumeration of lock nodes, see if any are blocking this...
-      // 查看孩子节点，是否有阻塞父节点的情况
-      if (passOrTryRepeat(rc, new Code[]{Code.OK}, (Runnable) ctx)) {
-        // Create sorted list of nodes.
-        SortedSet<ZkLockNode> nodeQueue = new TreeSet<>();
-        for (String lockId : children) {
-          ZkLockNode zkLockNode = ZkLockNode.lockNodeFromId(lockId, ZkLockBase.this.thisNodeId);
-          nodeQueue.add(zkLockNode);
-        }
-        // Check who is blocking this.
-        ZkLockNode self = null;
-        ZkLockNode prevNode = null;
-        ZkLockNode prevWriteNode = null;
-        for (ZkLockNode node : nodeQueue) {
-          if (node.self) {
-            self = node;
-            break;// Break, not continue. Indicate no children.
-          }
-          prevNode = node;
-          if (prevNode.lockType == LockType.WRITE) {
-            prevWriteNode = prevNode;
-          }
-        }
-        // Blocking node
-        ZkLockNode blockingNode;
-        if (self != null && LockType.READ == self.lockType) {
-          blockingNode = prevWriteNode;
-        } else {
-          blockingNode = prevNode;
-        }
-        // Are we blocked?
-        if (blockingNode != null) {
-          blockingNodeId = blockingNode.name;
-          // Should we give up, or wait?
-          if (tryAcquireOnly) {// We abandon attempt to acquire
-            safeLockState(LockState.ABANDONED);
-          } else {// Wait for blocking node.
-            watchBlockingNode.run();
-          }
-        } else {
-          // Children do not have lock, we are acquired!
-          safeLockState(LockState.ACQUIRED);
-        }
-      }
-    }
-  };
-  private Runnable watchBlockingNode = new Runnable() {
-    @Override
-    public void run() {
-      String path = zkPath.getTargetPath() + "/" + blockingNodeId;
-      zkClient().exists(path, ZkLockBase.this, blockingNodeHandler, this);
-    }
-  };
-  private StatCallback blockingNodeHandler = (rc, path, ctx, stat) -> {
-    if (rc == Code.NONODE.intValue()) {
-      getQueuedLocks.run();
-    } else {
-      passOrTryRepeat(rc, new Code[]{Code.OK}, (Runnable) ctx);
-    }
-  };
-
   @Override
   protected void onNodeDeleted(String path) {
     getQueuedLocks.run();
   }
-
-  /**
-   * Only delete the node.
-   */
-  private Runnable releaseLock = new Runnable() {
-    @Override
-    public void run() {
-      zkClient().delete(zkPath.getTargetPath() + "/" + thisNodeId, -1, releaseLockHandler, this);
-    }
-  };
-
-  private VoidCallback releaseLockHandler =
-      (rc, path, ctx) -> passOrTryRepeat(rc, new Code[]{Code.OK, Code.NONODE}, (Runnable) ctx);
-
-  private Runnable reportStateUpdatedToListener = new Runnable() {
-    @Override
-    public void run() {
-      if (tryAcquireOnly && lockState != LockState.ACQUIRED) {
-        // We know that an error has not occurred, because that is passed to handler below. So report attempt
-        // to acquire locked failed because was already held.
-        ITryLockListener listener = (ITryLockListener) ZkLockBase.this.listener;
-        listener.onTryAcquireLockFailed(ZkLockBase.this, context);
-      } else {
-        listener.onLockAcquired(ZkLockBase.this, context);
-      }
-    }
-  };
-  private Runnable reportDieToListener = new Runnable() {
-    @Override
-    public void run() {
-      listener.onLockError(getKillerException(), ZkLockBase.this, context);
-    }
-  };
 
   /**
    * Set the lock state when we know an exception can't be thrown

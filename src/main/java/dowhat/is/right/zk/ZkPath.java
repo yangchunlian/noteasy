@@ -36,27 +36,8 @@ public class ZkPath extends ZkSyncPrimitive {
 
   private final String targetPath;
   private final String[] pathNodes;
-  private int pathNodesIdx;
   private final CreateMode createMode;
-
-  public ZkPath(String targetPath) {
-    this(targetPath, CreateMode.PERSISTENT);
-  }
-
-  public ZkPath(String targetPath, CreateMode createMode) {
-    super(ZkSessionManager.instance());
-    this.targetPath = targetPath;
-    this.createMode = createMode;
-    PathUtils.validatePath(targetPath);
-    pathNodes = targetPath.split("/");
-    pathNodesIdx = pathNodes.length;
-    tryCreatePath.run();
-  }
-
-  public String getTargetPath() {
-    return this.targetPath;
-  }
-
+  private int pathNodesIdx;
   /*
    * <English>
    * If create failed, they traverse create the parent path.
@@ -79,7 +60,6 @@ public class ZkPath extends ZkSyncPrimitive {
           .create(toCreate, new byte[0], Ids.OPEN_ACL_UNSAFE, createMode, createPathHandler, this);
     }
   };
-
   private StringCallback createPathHandler = new StringCallback() {
     @Override
     public void processResult(int rc, String path, Object context, String name) {
@@ -97,6 +77,24 @@ public class ZkPath extends ZkSyncPrimitive {
       tryCreatePath.run();
     }
   };
+
+  public ZkPath(String targetPath) {
+    this(targetPath, CreateMode.PERSISTENT);
+  }
+
+  public ZkPath(String targetPath, CreateMode createMode) {
+    super(ZkSessionManager.instance());
+    this.targetPath = targetPath;
+    this.createMode = createMode;
+    PathUtils.validatePath(targetPath);
+    pathNodes = targetPath.split("/");
+    pathNodesIdx = pathNodes.length;
+    tryCreatePath.run();
+  }
+
+  public String getTargetPath() {
+    return this.targetPath;
+  }
 
   @Override
   public void process(WatchedEvent watchedEvent) {

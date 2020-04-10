@@ -14,8 +14,6 @@ import org.apache.zookeeper.KeeperException.Code;
 import org.apache.zookeeper.ZooDefs;
 
 /**
- * todo
- *
  * @author 杨春炼
  * @since 2020-04-03
  */
@@ -25,10 +23,6 @@ public class ZkContributedKeySet extends ZkSyncPrimitive {
    * The ZooKeeper path where the contributed key set resides
    */
   private final String rootPath;
-  /**
-   * The current values in the contributed key set
-   */
-  private volatile Set<String> set;
   /**
    * Whether this class should automatically re-synchronize with the contributed set, and re-add its
    * members, after session expiry
@@ -45,9 +39,62 @@ public class ZkContributedKeySet extends ZkSyncPrimitive {
    */
   private final ConcurrentHashMap<String, Boolean> failedContributions;
   /**
+   * The current values in the contributed key set
+   */
+  private volatile Set<String> set;
+  /**
    * The values that this instance has attempts to contribute to the distributed key set.
    */
   private String[] myContribution;
+  private int myEntryIdx;
+  private StringCallback entryNodeCreatorResultHandler = new StringCallback() {
+
+    @Override
+    public void processResult(int rc, String path, Object ctx, String name) {
+      // In respect to the entry we tried to add, record whether we made the contribution, or another instance
+      recordCreationResult(name, Code.get(rc));
+      // Execute next step
+      if (passOrTryRepeat(rc, new Code[]{Code.OK, Code.NODEEXISTS}, (Runnable) ctx)) {
+        entryNodeCreator.run();
+      }
+    }
+
+  };
+  private ChildrenCallback entriesRequestorResultHandler = new ChildrenCallback() {
+
+    @Override
+    public void processResult(int rc, String path, Object ctx, List<String> children) {
+      if (passOrTryRepeat(rc, new Code[]{Code.OK}, (Runnable) ctx)) {
+        HashSet<String> modifiableSet = new HashSet<String>(children);
+        set = Collections.unmodifiableSet(modifiableSet);
+        onStateUpdated();
+      }
+    }
+
+  };
+  private Runnable entriesRequestor = new Runnable() {
+
+    @Override
+    public void run() {
+      zkClient()
+          .getChildren(rootPath, ZkContributedKeySet.this, entriesRequestorResultHandler, this);
+    }
+  };
+  private Runnable entryNodeCreator = new Runnable() {
+
+    @Override
+    public void run() {
+      if (myEntryIdx < myContribution.length) {
+        String entryPath = rootPath + "/" + myContribution[myEntryIdx++];
+        zkClient()
+            .create(entryPath, new byte[0], ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL,
+                entryNodeCreatorResultHandler, this);
+      } else {
+        entriesRequestor.run();
+      }
+    }
+
+  };
 
   /**
    * Maintains the contents of a set to which each connected user contributes members. Note that in
@@ -169,59 +216,6 @@ public class ZkContributedKeySet extends ZkSyncPrimitive {
       entriesRequestor.run();
     }
   }
-
-  private int myEntryIdx;
-  private Runnable entryNodeCreator = new Runnable() {
-
-    @Override
-    public void run() {
-      if (myEntryIdx < myContribution.length) {
-        String entryPath = rootPath + "/" + myContribution[myEntryIdx++];
-        zkClient()
-            .create(entryPath, new byte[0], ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL,
-                entryNodeCreatorResultHandler, this);
-      } else {
-        entriesRequestor.run();
-      }
-    }
-
-  };
-
-  private StringCallback entryNodeCreatorResultHandler = new StringCallback() {
-
-    @Override
-    public void processResult(int rc, String path, Object ctx, String name) {
-      // In respect to the entry we tried to add, record whether we made the contribution, or another instance
-      recordCreationResult(name, Code.get(rc));
-      // Execute next step
-      if (passOrTryRepeat(rc, new Code[]{Code.OK, Code.NODEEXISTS}, (Runnable) ctx)) {
-        entryNodeCreator.run();
-      }
-    }
-
-  };
-
-  private Runnable entriesRequestor = new Runnable() {
-
-    @Override
-    public void run() {
-      zkClient()
-          .getChildren(rootPath, ZkContributedKeySet.this, entriesRequestorResultHandler, this);
-    }
-  };
-
-  private ChildrenCallback entriesRequestorResultHandler = new ChildrenCallback() {
-
-    @Override
-    public void processResult(int rc, String path, Object ctx, List<String> children) {
-      if (passOrTryRepeat(rc, new Code[]{Code.OK}, (Runnable) ctx)) {
-        HashSet<String> modifiableSet = new HashSet<String>(children);
-        set = Collections.unmodifiableSet(modifiableSet);
-        onStateUpdated();
-      }
-    }
-
-  };
 
   private void recordCreationResult(String entryName, Code rc) {
     if (rc == Code.OK) {

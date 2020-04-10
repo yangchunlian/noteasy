@@ -10,26 +10,6 @@ import org.apache.zookeeper.KeeperException;
 public class ZkException extends Exception {
 
 
-  public enum Error {
-    ZOOKEEPER_EXCEPTION("zk异常"),
-    INTERRUPTED_EXCEPTION("中断异常"),
-    LOCK_ALREADY_WAITING("锁等待被获取"),
-    LOCK_ALREADY_ABANDONED("锁已经被遗弃"),
-    LOCK_ALREADY_ACQUIRED("锁已经被获取"),
-    LOCK_ALREADY_RELEASED("锁已经被释放"),
-    LOCK_RELEASED_WHILE_WAITING("锁在等待时释放"),
-    MAX_ATTEMPTS_EXCEEDED("超出获取次数"),
-    UNKNOWN_ERROR("未知错误"),
-    //
-    ;
-    //Chinese des.
-    private String des;
-
-    Error(String des) {
-      this.des = des;
-    }
-  }
-
   private Error error;
   private KeeperException keeperException;
 
@@ -49,5 +29,25 @@ public class ZkException extends Exception {
 
   public KeeperException getKeeperException() {
     return keeperException;
+  }
+
+  public enum Error {
+    ZOOKEEPER_EXCEPTION("zk异常"),
+    INTERRUPTED_EXCEPTION("中断异常"),
+    LOCK_ALREADY_WAITING("锁等待被获取"),
+    LOCK_ALREADY_ABANDONED("锁已经被遗弃"),
+    LOCK_ALREADY_ACQUIRED("锁已经被获取"),
+    LOCK_ALREADY_RELEASED("锁已经被释放"),
+    LOCK_RELEASED_WHILE_WAITING("锁在等待时释放"),
+    MAX_ATTEMPTS_EXCEEDED("超出获取次数"),
+    UNKNOWN_ERROR("未知错误"),
+    //
+    ;
+    //Chinese des.
+    private String des;
+
+    Error(String des) {
+      this.des = des;
+    }
   }
 }

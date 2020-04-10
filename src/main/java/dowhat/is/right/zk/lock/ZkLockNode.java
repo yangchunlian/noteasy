@@ -15,6 +15,13 @@ public class ZkLockNode implements Comparable<ZkLockNode> {
   public final boolean self;
 
 
+  public ZkLockNode(String name, LockType lockType, int seqNo, boolean self) {
+    this.name = name;
+    this.lockType = lockType;
+    this.seqNo = seqNo;
+    this.self = self;
+  }
+
   /**
    * Retries the lock node id from a full lock node name path (the path after addition of sequence
    * number).
@@ -59,13 +66,6 @@ public class ZkLockNode implements Comparable<ZkLockNode> {
       return null;// not lock node
     }
     return new ZkLockNode(lockId, lockType, seqNo, lockId.equals(lockIdSelf));
-  }
-
-  public ZkLockNode(String name, LockType lockType, int seqNo, boolean self) {
-    this.name = name;
-    this.lockType = lockType;
-    this.seqNo = seqNo;
-    this.self = self;
   }
 
   /**
