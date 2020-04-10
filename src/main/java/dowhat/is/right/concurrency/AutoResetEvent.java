@@ -8,11 +8,20 @@ import java.util.concurrent.TimeUnit;
  * <English>
  * A simple event which can be either signalled or non-signalled.
  * <p>
- * Waiting for a signalled event does not block. Waiting for a non-signalled event blocks until the
- * event becomes signalled or the thread is interrupted. When a thread waits for the event and then
- * returns, it automatically sets the event to a non-signalled state. Therefore, if the event starts
- * in a non-signalled state, the number of waiting threads it has allowed to pass is equal to the
- * number of times it has been signalled via set().
+ * Waiting for a signalled event does not block.
+ * <p>
+ * Waiting for a non-signalled event blocks until the event becomes signalled or the thread is
+ * interrupted.
+ * <p>
+ * When a thread waits for the event and then returns,
+ * <p>
+ * it automatically sets the event to a non-signalled state.
+ * <p>
+ * Therefore, if the event starts in a non-signalled state,
+ * <p>
+ * the number of waiting threads it has allowed to pass is equal to the number of times it has been
+ * signalled via <code>set()</code>.
+ *
  * <Chinese>
  * 一个可以发出信号或不发出信号的简单事件。
  * <p>
@@ -22,7 +31,7 @@ import java.util.concurrent.TimeUnit;
  * <p>
  * 当线程等待事件并返回时，它会自动将事件设置为无信号状态。
  * <p>
- * 因此，如果事件以无信号状态启动，那么它允许传递的等待线程的数量等于通过set()发出信号的次数。
+ * 因此，如果事件以无信号状态启动，那么它允许传递的等待线程的数量等于通过<code>set()</code>发出信号的次数。
  *
  * @author 杨春炼
  * @since 2020-04-03
@@ -35,7 +44,6 @@ public class AutoResetEvent implements IResetEvent {
   public AutoResetEvent(boolean signalled) {
     event = new Semaphore(signalled ? 1 : 0);
     mutex = -1;
-
   }
 
   /**
@@ -57,7 +65,6 @@ public class AutoResetEvent implements IResetEvent {
   public void reset() {
     event.drainPermits();
   }
-
 
   /**
    * Wait for this event to become signalled. If several threads are waiting only one will be
