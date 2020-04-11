@@ -1,8 +1,6 @@
 # Do what is right, not what is easy.
 
-the road to self-improvement
-
-自我提升之路 
+self-improvement
 
 
 ## 1 design patterns 
@@ -12,3 +10,7 @@ the road to self-improvement
 ## 3 redis
 
 ## 4 mysql
+
+## 5 lock
+
+## 6 jdk8
