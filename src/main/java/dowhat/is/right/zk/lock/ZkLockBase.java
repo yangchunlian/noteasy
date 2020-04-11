@@ -15,7 +15,6 @@ import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException.Code;
 import org.apache.zookeeper.ZooDefs;
 import org.apache.zookeeper.common.PathUtils;
-import org.apache.zookeeper.data.Stat;
 
 /**
  * <English>
@@ -129,14 +128,11 @@ public abstract class ZkLockBase extends ZkSyncPrimitive implements
       zkClient().getChildren(zkPath.getTargetPath(), null, queuedLocksHandler, this);
     }
   };
-  private StatCallback blockingNodeHandler = new StatCallback() {
-    @Override
-    public void processResult(int rc, String path, Object ctx, Stat stat) {
-      if (rc == Code.NONODE.intValue()) {
-        getQueuedLocks.run();
-      } else {
-        passOrTryRepeat(rc, new Code[]{Code.OK}, (Runnable) ctx);
-      }
+  private StatCallback blockingNodeHandler = (rc, path, ctx, stat) -> {
+    if (rc == Code.NONODE.intValue()) {
+      getQueuedLocks.run();
+    } else {
+      passOrTryRepeat(rc, new Code[]{Code.OK}, (Runnable) ctx);
     }
   };
   private Runnable watchBlockingNode = new Runnable() {
@@ -153,15 +149,12 @@ public abstract class ZkLockBase extends ZkSyncPrimitive implements
    * <p>
    * else, ...
    */
-  private StringCallback createLockNodeHandler = new StringCallback() {
-    @Override
-    public void processResult(int rc, String path, Object ctx, String name) {
-      if (Code.OK.intValue() == rc) {
-        thisNodeId = ZkLockNode.getLockNodeIdFromName(name);
-      }
-      if (passOrTryRepeat(rc, new Code[]{Code.OK}, (Runnable) ctx)) {
-        getQueuedLocks.run();
-      }
+  private StringCallback createLockNodeHandler = (rc, path, ctx, name) -> {
+    if (Code.OK.intValue() == rc) {
+      thisNodeId = ZkLockNode.getLockNodeIdFromName(name);
+    }
+    if (passOrTryRepeat(rc, new Code[]{Code.OK}, (Runnable) ctx)) {
+      getQueuedLocks.run();
     }
   };
   /**
@@ -180,24 +173,18 @@ public abstract class ZkLockBase extends ZkSyncPrimitive implements
           this);
     }
   };
-  private Runnable reportStateUpdatedToListener = new Runnable() {
-    @Override
-    public void run() {
-      if (tryAcquireOnly && lockState != LockState.ACQUIRED) {
-        // We know that an error has not occurred, because that is passed to handler below. So report attempt
-        // to acquire locked failed because was already held.
-        ITryLockListener listener = (ITryLockListener) ZkLockBase.this.listener;
-        listener.onTryAcquireLockFailed(ZkLockBase.this, context);
-      } else {
-        listener.onLockAcquired(ZkLockBase.this, context);
-      }
+  private Runnable reportStateUpdatedToListener = () -> {
+    if (tryAcquireOnly && lockState != LockState.ACQUIRED) {
+      // We know that an error has not occurred, because that is passed to handler below. So report attempt
+      // to acquire locked failed because was already held.
+      ITryLockListener listener = (ITryLockListener) ZkLockBase.this.listener;
+      listener.onTryAcquireLockFailed(ZkLockBase.this, context);
+    } else {
+      listener.onLockAcquired(ZkLockBase.this, context);
     }
   };
-  private Runnable reportDieToListener = new Runnable() {
-    @Override
-    public void run() {
-      listener.onLockError(getKillerException(), ZkLockBase.this, context);
-    }
+  private Runnable reportDieToListener = () -> {
+    listener.onLockError(getKillerException(), ZkLockBase.this, context);
   };
 
   public ZkLockBase(String lockPath) {
@@ -212,7 +199,7 @@ public abstract class ZkLockBase extends ZkSyncPrimitive implements
    * {@inheritDoc}
    */
   @Override
-  public void acquire() throws ZkException, InterruptedException {
+  public void acquire() throws ZkException {
     setLockState(LockState.WAITING);
     createRootPath(lockPath);
     waitSynchronized();
@@ -223,7 +210,7 @@ public abstract class ZkLockBase extends ZkSyncPrimitive implements
    */
   @Override
   public void acquire(ILockListener listener, Object context)
-      throws ZkException, InterruptedException {
+      throws ZkException {
     setLockState(LockState.WAITING);
     this.listener = listener;
     this.context = context;
@@ -236,7 +223,7 @@ public abstract class ZkLockBase extends ZkSyncPrimitive implements
    * {@inheritDoc}
    */
   @Override
-  public boolean tryAcquire() throws ZkException, InterruptedException {
+  public boolean tryAcquire() throws ZkException {
     setLockState(LockState.WAITING);//Only the idle state can set waiting.
     tryAcquireOnly = true;
     createRootPath(lockPath);
@@ -249,7 +236,7 @@ public abstract class ZkLockBase extends ZkSyncPrimitive implements
    */
   @Override
   public void tryAcquire(ITryLockListener listener, Object context)
-      throws ZkException, InterruptedException {
+      throws ZkException {
     setLockState(LockState.WAITING);
     this.listener = listener;
     this.context = context;

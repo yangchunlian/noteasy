@@ -42,9 +42,9 @@ import org.apache.zookeeper.common.PathUtils;
  */
 public class ZkPath extends ZkSyncPrimitive {
 
-  private final String targetPath;
-  private final String[] pathNodes;
-  private final CreateMode createMode;
+  private String targetPath;
+  private String[] pathNodes;
+  private CreateMode createMode;
   private int pathNodesIdx;
   /*
    * <English>
@@ -87,7 +87,7 @@ public class ZkPath extends ZkSyncPrimitive {
     }
   };
 
-  public ZkPath(String targetPath) {
+  ZkPath(String targetPath) {
     this(targetPath, CreateMode.PERSISTENT);
   }
 

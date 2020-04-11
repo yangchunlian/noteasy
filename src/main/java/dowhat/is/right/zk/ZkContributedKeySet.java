@@ -73,7 +73,6 @@ public class ZkContributedKeySet extends ZkSyncPrimitive {
 
   };
   private Runnable entriesRequestor = new Runnable() {
-
     @Override
     public void run() {
       zkClient()
