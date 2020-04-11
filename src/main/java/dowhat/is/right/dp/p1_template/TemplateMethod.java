@@ -1,4 +1,4 @@
-package dowhat.is.right.dp.template_method;
+package dowhat.is.right.dp.p1_template;
 
 /**
  * @author 杨春炼
