@@ -5,12 +5,10 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
-import com.google.common.base.Stopwatch;
 import dowhat.is.right.concurrency.ManualResetEvent;
 import dowhat.is.right.zk.lock.ZkLockBase;
 import dowhat.is.right.zk.lock.ZkReadLock;
 import dowhat.is.right.zk.lock.ZkWriteLock;
-import java.util.Date;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
 import org.junit.After;
@@ -32,22 +30,25 @@ public class ZkTest {
     ZkSessionManager.instance().shutdown();
   }
 
+
   @Test
-  public void testLimit() {
-    ZkReadLock zkReadLock = new ZkReadLock("/2020-04-07/1opsIn60s");
+  public void testPath() {
+    ZkPath zkPath = new ZkPath("/tian/zheng");
+    System.out.println(zkPath);
+  }
+
+  /**
+   * {@link ManualResetEvent}
+   */
+  @Test
+  public void testLock() {
+    ZkReadLock zkReadLock = new ZkReadLock("/tian/zheng");
     try {
       boolean b = zkReadLock.tryAcquire();
       if (b) {
-        Stopwatch watch = Stopwatch.createStarted();
-        Thread.sleep(new Random().nextInt(1000));
-        watch.stop();
-        long duration = watch.elapsed(TimeUnit.MILLISECONDS);
-        Date date = new Date();
-        System.out.println("date:" + date);
-        System.out.println("duration:" + duration);
         zkReadLock.release();
       }
-    } catch (ZkException | InterruptedException e) {
+    } catch (ZkException e) {
       e.printStackTrace();
     }
   }

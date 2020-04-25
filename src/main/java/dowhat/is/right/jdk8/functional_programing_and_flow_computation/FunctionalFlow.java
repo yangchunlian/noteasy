@@ -106,7 +106,7 @@ public class FunctionalFlow {
   /**
    * 纯函数式编程 Java 8 让函数式编程更简单，
    * <p>
-   * 不过我们要确保一切是 final 的，同时你的所有方法和函数没有副作用。
+   * lambda 表达式只能引用标记了 final 的外层局部变量，这就是说不能在 lambda 内部修改定义在域外的局部变量，否则会编译错误。
    */
   private static void noUse() {
     StringBuilder filterStr = new StringBuilder();

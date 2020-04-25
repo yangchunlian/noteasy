@@ -42,9 +42,13 @@ import org.apache.zookeeper.common.PathUtils;
  */
 public class ZkPath extends ZkSyncPrimitive {
 
+  //想要创建的目标路径
   private String targetPath;
+  //路径上的节点
   private String[] pathNodes;
+  //路径是永久、暂时，是否有序
   private CreateMode createMode;
+  //路径上节点的个数
   private int pathNodesIdx;
   /*
    * <English>
@@ -56,19 +60,20 @@ public class ZkPath extends ZkSyncPrimitive {
   private Runnable tryCreatePath = new Runnable() {
     @Override
     public void run() {
-      String toCreate = "/";
+      String toCreatePath = "/";
       if (pathNodesIdx > 1) {
         StringBuilder currNodePath = new StringBuilder();
         for (int i = 1; i < pathNodesIdx; i++) {// i=1 to skip split()[0] empty node
           currNodePath.append("/");
           currNodePath.append(pathNodes[i]);
         }
-        toCreate = currNodePath.toString();
+        toCreatePath = currNodePath.toString();
       }
-      zkClient()
-          .create(toCreate, new byte[0], Ids.OPEN_ACL_UNSAFE, createMode, createPathHandler, this);
+      zkClient().create(
+          toCreatePath, new byte[0], Ids.OPEN_ACL_UNSAFE, createMode, createPathHandler, this);
     }
   };
+
   private StringCallback createPathHandler = new StringCallback() {
     @Override
     public void processResult(int rc, String path, Object context, String name) {
